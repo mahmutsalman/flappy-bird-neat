@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEAT Algoritması — Görsel</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #040904;
+  --panel:   #070d07;
+  --surface: #0a130a;
+  --border:  #183018;
+  --text:    #b8f0b8;
+  --muted:   #487848;
+  --accent:  #39ff14;
+  --alt:     #ffd700;
+  --p1:      #00c8f0;
+  --p2:      #ff7b54;
+  --font-d:  'Syne', sans-serif;
+  --font-b:  'Space Mono', monospace;
+  --font-m:  'Space Mono', monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:var(--font-b);-webkit-font-smoothing:antialiased;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.035;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat:repeat;mix-blend-mode:multiply;}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9998;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.12) 2px,rgba(0,0,0,.12) 4px);}
+
+.wrap{max-width:860px;margin:0 auto;padding:0 24px 100px;}
+
+/* Cover */
+.cover{min-height:30vh;display:flex;align-items:center;padding:60px 0 44px;border-bottom:1px solid var(--border);}
+.cover-lbl{font-family:var(--font-m);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:16px;}
+.cover-h{font-family:var(--font-d);font-size:clamp(46px,7vw,80px);line-height:1;letter-spacing:-.02em;color:var(--text);margin-bottom:14px;}
+.cover-sub{font-size:12px;line-height:1.8;color:var(--muted);max-width:460px;}
+.ak{color:var(--accent);font-style:italic;}
+
+/* Panel */
+.panel{position:sticky;top:0;z-index:100;background:var(--panel);backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--border);padding:12px 0;}
+.pctrl{display:flex;flex-wrap:wrap;gap:16px 36px;margin-bottom:10px;}
+.sg{display:flex;flex-direction:column;gap:5px;min-width:180px;}
+.sl{font-family:var(--font-m);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+.sv{color:var(--accent);font-weight:700;}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:3px;background:var(--border);border-radius:2px;outline:none;cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;border:2px solid var(--accent);background:var(--bg);cursor:pointer;}
+.pr{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.plbl{font-family:var(--font-m);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-right:4px;}
+.pb{font-family:var(--font-m);font-size:10px;padding:3px 11px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;border-radius:2px;letter-spacing:.04em;transition:border-color .15s,color .15s;}
+.pb:hover{border-color:var(--accent);color:var(--accent);}
+.pb.on{border-color:var(--accent);color:var(--accent);background:rgba(57,255,20,.08);}
+
+/* Chapter */
+.ch-h{padding:52px 0 24px;border-top:1px solid var(--border);margin-top:52px;}
+.ch-ey{font-family:var(--font-m);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+.ch-t{font-family:var(--font-d);font-size:clamp(26px,4vw,42px);line-height:1.1;letter-spacing:-.01em;color:var(--text);margin-bottom:10px;}
+.ch-dk{font-size:12px;font-style:italic;color:var(--muted);max-width:420px;line-height:1.7;}
+.bt{font-size:12px;line-height:1.85;color:var(--text);max-width:660px;margin:16px 0;}
+
+/* Stats */
+.ss{display:flex;border-top:2px solid var(--border);border-bottom:2px solid var(--border);margin:28px 0;}
+.sc{flex:1;padding:15px 0;text-align:center;border-right:1px dashed var(--border);}
+.sc:last-child{border-right:none;}
+.slb{display:block;font-family:var(--font-m);font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+.sv2{display:block;font-family:var(--font-d);font-size:28px;font-weight:700;color:var(--text);line-height:1.1;}
+.su{display:block;font-family:var(--font-m);font-size:9px;color:var(--accent);margin-top:2px;}
+
+/* Chart wrapper */
+.cw{margin:24px 0;}
+.ch-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+.ctit{font-family:var(--font-m);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);}
+.ccap{font-family:var(--font-b);font-size:11px;font-style:italic;color:var(--muted);margin-top:7px;}
+.ftag{font-family:var(--font-m);font-size:10px;color:var(--accent);font-style:normal;margin-right:5px;}
+svg{overflow:visible;}
+
+/* Alert */
+.ab{border-left:3px solid var(--accent);padding:12px 16px;background:rgba(57,255,20,.04);margin:22px 0;border-radius:0 2px 2px 0;}
+.albl{font-family:var(--font-m);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:6px;}
+.abdy{font-size:12px;line-height:1.75;color:var(--text);}
+
+/* Coda */
+.coda{margin:68px 0 48px;padding-top:36px;border-top:1px solid var(--border);text-align:center;}
+.cq{font-family:var(--font-d);font-size:clamp(14px,1.9vw,19px);font-style:italic;line-height:1.55;color:var(--text);max-width:500px;margin:0 auto 14px;}
+.ca{font-family:var(--font-m);font-size:11px;letter-spacing:.1em;color:var(--muted);}
+
+@media(max-width:800px){
+  .wrap{padding:0 14px 80px;}
+  .pctrl{gap:12px 20px;}
+  .ss{flex-wrap:wrap;}
+  .sc{flex:1 1 44%;}
+  .cover-h{font-size:38px;}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<section class="cover">
+  <div>
+    <p class="cover-lbl">Görsel Açıklama</p>
+    <h1 class="cover-h">NEAT <em class="ak">Algoritması</em></h1>
+    <p class="cover-sub">Minimal ağdan başlayıp topolojiyi evrimleştirerek sinir ağlarını otomatik tasarlayan algoritma.</p>
+  </div>
+</section>
+</div>
+
+<div class="panel">
+  <div class="wrap">
+    <div class="pctrl">
+      <div class="sg">
+        <label class="sl">Nesil: <span class="sv" id="genVal">0</span></label>
+        <input type="range" id="genSlider" min="0" max="20" value="0" step="1" oninput="update()">
+      </div>
+    </div>
+    <div class="pr">
+      <span class="plbl">Hızlı git</span>
+      <button class="pb on" onclick="setP('start')">Başlangıç (0)</button>
+      <button class="pb"    onclick="setP('mid')">Orta (10)</button>
+      <button class="pb"    onclick="setP('adv')">Gelişmiş (20)</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- Chapter I: NEAT Döngüsü -->
+<section>
+  <header class="ch-h">
+    <p class="ch-ey">Bölüm I</p>
+    <h2 class="ch-t">NEAT <em class="ak">Döngüsü</em></h2>
+    <p class="ch-dk">Her nesilde tekrar eden dört adım. Kaydırıcıyla aktif adımı izle.</p>
+  </header>
+
+  <p class="bt">NEAT minimal bir ağla başlar — sadece giriş ve çıkış düğümleri, gizli katman yok. Her nesilde ağlar fitness için değerlendirilir, benzerliklerine göre türlere ayrılır, üreir ve mutasyona uğrar. Topoloji zamanla büyür.</p>
+
+  <div class="cw">
+    <div class="ch-head"><h4 class="ctit">Nesil Döngüsü — Aktif Adım Vurgulanır</h4></div>
+    <svg id="cycleSvg" width="100%" height="280" viewBox="0 0 500 280"
+         style="border:1px solid var(--border);border-radius:2px;background:#020802;"></svg>
+    <p class="ccap"><span class="ftag">Şek. 1.1</span> Nesil kaydırıcısını sürükle — hangi adımın aktif olduğu değişir.</p>
+  </div>
+
+  <div class="ss">
+    <div class="sc"><span class="slb">Nesil</span><span class="sv2" id="stGen">0</span><span class="su">gen</span></div>
+    <div class="sc"><span class="slb">Düğüm</span><span class="sv2" id="stNode">4</span><span class="su">adet</span></div>
+    <div class="sc"><span class="slb">Bağlantı</span><span class="sv2" id="stConn">3</span><span class="su">adet</span></div>
+    <div class="sc"><span class="slb">En İyi Fitness</span><span class="sv2" id="stFit">0.00</span><span class="su">/ 1.00</span></div>
+  </div>
+</section>
+
+<!-- Chapter II: Ağın Büyümesi (CENTERPIECE) -->
+<section>
+  <header class="ch-h">
+    <p class="ch-ey">Bölüm II</p>
+    <h2 class="ch-t">Ağın <em class="ak">Büyümesi</em></h2>
+    <p class="ch-dk">Nesil kaydırıcısını sürükle. Topoloji adım adım büyür.</p>
+  </header>
+
+  <p class="bt">NEAT iki mutasyon türüyle topoloji ekler: <em>bağlantı ekle</em> (iki düğümü doğrudan bağlar) ve <em>düğüm ekle</em> (mevcut bağlantıyı böler, araya yeni düğüm koyar). Kesik çizgi devre dışı bırakılmış ama genomdan silinmemiş bağlantıyı gösterir.</p>
+
+  <div class="cw">
+    <div class="ch-head">
+      <h4 class="ctit">Sinir Ağı — Nesil <span id="netGenLbl">0</span></h4>
+      <div style="font-family:var(--font-m);font-size:10px;color:var(--muted);">
+        Yeni eklenen: <span id="newItemLbl" style="color:var(--alt);">—</span>
+      </div>
+    </div>
+    <svg id="netSvg" width="100%" height="320" viewBox="0 0 560 320"
+         style="border:1px solid var(--border);border-radius:2px;background:#020802;"></svg>
+    <p class="ccap"><span class="ftag">Şek. 2.1</span> Mavi sol şerit = aktif bağlantı. Kesik = devre dışı (silinmez). Sarı düğüm = bu nesilde yeni eklendi.</p>
+  </div>
+</section>
+
+<!-- Chapter III: Fitness Eğrisi -->
+<section>
+  <header class="ch-h">
+    <p class="ch-ey">Bölüm III</p>
+    <h2 class="ch-t">Fitness <em class="ak">İlerlemesi</em></h2>
+    <p class="ch-dk">Tür ayrımı (speciation) yeni topolojileri erken ölmekten korur.</p>
+  </header>
+
+  <p class="bt">Yeni bir topoloji ilk başta düşük fitness gösterir — henüz optimize olmamıştır. Tür ayrımı bu bireyleri kendi içinde rekabet ettirerek hayatta tutar. Zamanla topoloji optimize olur ve fitness sıçrar. Bu korumasız olsaydı, radikal yenilikler ilk nesilde elenir.</p>
+
+  <div class="cw">
+    <div class="ch-head">
+      <h4 class="ctit">En İyi Fitness — 20 Nesil Boyunca</h4>
+    </div>
+    <svg id="fitSvg" width="100%" height="200" viewBox="0 0 700 200"
+         style="border:1px solid var(--border);border-radius:2px;background:#020802;"></svg>
+    <p class="ccap"><span class="ftag">Şek. 3.1</span> Dikey çizgi şu anki nesil. Eğrideki sıçramalar topoloji değişikliği anlarını gösterir.</p>
+  </div>
+
+  <div class="ab">
+    <p class="albl">Neden tür ayrımı gerekli?</p>
+    <p class="abdy">Yeni bir düğüm eklenmesi kısa vadede fitness'ı düşürür — ağırlıklar henüz optimize değildir. Tür ayrımı olmadan bu bireyler elenir ve topoloji asla büyüyemez. Speciation, yenilikleri "kendi liglerinde" rekabet ettirerek zaman tanır.</p>
+  </div>
+</section>
+
+<footer class="coda">
+  <blockquote class="cq">"Complexity should grow from simplicity, not be imposed upon it."</blockquote>
+  <p class="ca"><span class="ftag">—</span> Kenneth O. Stanley &amp; Risto Miikkulainen, 2002</p>
+</footer>
+
+</div>
+
+<script>
+const fmt = (n,d=2) => (+n).toFixed(d);
+const NS = 'http://www.w3.org/2000/svg';
+function mk(tag,a){const e=document.createElementNS(NS,tag);for(const[k,v]of Object.entries(a))e.setAttribute(k,v);return e;}
+
+// ── Network definition ───────────────────────────────────────────────────────
+const NODES = {
+  I1:{x:80, y:80,  type:'in',  lbl:'IN 1'},
+  I2:{x:80, y:160, type:'in',  lbl:'IN 2'},
+  I3:{x:80, y:240, type:'in',  lbl:'IN 3'},
+  H1:{x:240,y:120, type:'hid', lbl:'H 1'},
+  H2:{x:240,y:220, type:'hid', lbl:'H 2'},
+  O1:{x:420,y:160, type:'out', lbl:'OUT'},
+};
+const NODE_BORN = {I1:0,I2:0,I3:0,O1:0,H1:4,H2:10};
+
+// each conn: {f,t,w,born,disabledFrom,newAt}
+const CONNS = [
+  {f:'I1',t:'O1',w: 0.70,born:0,  disabledFrom:999, newAt:0},
+  {f:'I2',t:'O1',w:-0.30,born:0,  disabledFrom:4,   newAt:0},
+  {f:'I3',t:'O1',w: 0.50,born:0,  disabledFrom:999, newAt:0},
+  {f:'I2',t:'H1',w: 1.00,born:4,  disabledFrom:999, newAt:4},
+  {f:'H1',t:'O1',w:-0.30,born:4,  disabledFrom:999, newAt:4},
+  {f:'I1',t:'H1',w: 0.40,born:7,  disabledFrom:999, newAt:7},
+  {f:'I3',t:'H2',w: 1.00,born:10, disabledFrom:999, newAt:10},
+  {f:'H2',t:'O1',w: 0.50,born:10, disabledFrom:999, newAt:10},
+  {f:'H1',t:'H2',w:-0.20,born:13, disabledFrom:999, newAt:13},
+  {f:'I2',t:'H2',w: 0.60,born:16, disabledFrom:999, newAt:16},
+];
+
+function visConns(gen){ return CONNS.filter(c=>gen>=c.born); }
+function connEnabled(c,gen){ return gen < c.disabledFrom; }
+function visNodes(gen){ return Object.entries(NODES).filter(([id])=>gen>=(NODE_BORN[id]||0)); }
+function bestFit(gen){ return Math.min(0.97,1-Math.exp(-gen/6.5)); }
+function speciesCount(gen){ return Math.min(5,Math.max(1,Math.floor(gen/3)+1)); }
+
+// ── SVG helpers ──────────────────────────────────────────────────────────────
+function txt(p,x,y,s,fill,anchor='middle',size='11px',w=400){
+  const t=mk('text',{x,y,fill,'text-anchor':anchor,'dominant-baseline':'middle',
+    'font-family':'Space Mono,monospace','font-size':size,'font-weight':w});
+  t.textContent=s;p.appendChild(t);return t;
+}
+function line(p,x1,y1,x2,y2,stroke,sw,dash=''){
+  const l=mk('line',{x1,y1,x2,y2,stroke,'stroke-width':sw});
+  if(dash)l.setAttribute('stroke-dasharray',dash);p.appendChild(l);return l;
+}
+
+// ── Cycle diagram ────────────────────────────────────────────────────────────
+const STEPS = [
+  {lbl:'Değerlendir',sub:'Fitness ölç',color:'#39ff14'},
+  {lbl:'Türe Ayır',  sub:'Speciation',color:'#ffd700'},
+  {lbl:'Üret',       sub:'Crossover', color:'#00c8f0'},
+  {lbl:'Mutasyon',   sub:'Topoloji büyüt',color:'#ff7b54'},
+];
+
+function drawCycle(gen){
+  const svg=document.getElementById('cycleSvg');
+  svg.innerHTML='';
+  const W=500,H=280,cx=250,cy=140,R=95,rN=38;
+  const step = gen===0 ? -1 : (gen-1)%4;
+
+  // center label
+  txt(svg,cx,cy-12,'NEAT','#183018','middle','13px',800);
+  txt(svg,cx,cy+12,'Döngüsü','#183018','middle','10px',400);
+
+  // draw arcs between nodes
+  for(let i=0;i<4;i++){
+    const a0 = -Math.PI/2 + i*(2*Math.PI/4);
+    const a1 = -Math.PI/2 + (i+1)*(2*Math.PI/4);
+    const nx0=cx+R*Math.cos(a0), ny0=cy+R*Math.sin(a0);
+    const nx1=cx+R*Math.cos(a1), ny1=cy+R*Math.sin(a1);
+    const dx=nx1-nx0, dy=ny1-ny0, len=Math.sqrt(dx*dx+dy*dy);
+    const ux=dx/len, uy=dy/len;
+    const x0=nx0+ux*rN, y0=ny0+uy*rN;
+    const x1=nx1-ux*rN, y1=ny1-uy*rN;
+    const active=(i===step);
+    const c=active?STEPS[i].color:'#183018';
+    const sw=active?2:1;
+    line(svg,x0,y0,x1,y1,c,sw);
+    // arrowhead
+    const mx=(x0+x1)/2,my=(y0+y1)/2;
+    const ax=-uy*6,ay=ux*6;
+    const poly=mk('polygon',{
+      points:`${mx+ux*4},${my+uy*4} ${mx-ux*4+ax},${my-uy*4+ay} ${mx-ux*4-ax},${my-uy*4-ay}`,
+      fill:c
+    });
+    svg.appendChild(poly);
+  }
+
+  // draw nodes
+  for(let i=0;i<4;i++){
+    const a=-Math.PI/2+i*(2*Math.PI/4);
+    const nx=cx+R*Math.cos(a), ny=cy+R*Math.sin(a);
+    const active=(i===step);
+    const s=STEPS[i];
+    const bg=active?'rgba('+hexToRgb(s.color)+',0.15)':'rgba(24,48,24,0.8)';
+    const bc=active?s.color:'#183018';
+    svg.appendChild(mk('circle',{cx:nx,cy:ny,r:rN,fill:bg,stroke:bc,'stroke-width':active?2:1}));
+    txt(svg,nx,ny-8,s.lbl,active?s.color:s.color+'88','middle','10px',active?700:400);
+    txt(svg,nx,ny+8,s.sub,'#487848','middle','8px',400);
+    if(active){
+      svg.appendChild(mk('circle',{cx:nx,cy:ny,r:rN+5,fill:'none',stroke:s.color,'stroke-width':'0.5',opacity:'0.4'}));
+    }
+  }
+
+  // gen=0: show init state label
+  if(gen===0){
+    txt(svg,cx,cy-12,'Başlangıç','#39ff14','middle','11px',700);
+    txt(svg,cx,cy+8,'Minimal ağ','#487848','middle','9px',400);
+  }
+}
+
+function hexToRgb(hex){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return `${r},${g},${b}`;
+}
+
+// ── Network diagram ───────────────────────────────────────────────────────────
+function drawNet(gen){
+  const svg=document.getElementById('netSvg');
+  svg.innerHTML='';
+  const vn=visNodes(gen), vc=visConns(gen);
+
+  // find newest additions
+  const newConnBorn=Math.max(...vc.map(c=>c.born));
+  const newNodeBorn=Math.max(...vn.map(([,n])=>{
+    const id=vn.find(([,nd])=>nd===n)?.[0]; return id?NODE_BORN[id]:0;
+  }).filter(x=>!isNaN(x)));
+  const newestGen=Math.max(newConnBorn,newNodeBorn);
+
+  // draw connections first
+  for(const c of vc){
+    const fn=NODES[c.f], tn=NODES[c.t];
+    const en=connEnabled(c,gen);
+    const isNew=(c.born===gen||c.newAt===gen);
+    const stroke=isNew?'#ffd700':en?'#00c8f0':'#183018';
+    const sw=isNew?2:en?1.5:0.8;
+    const dash=en?'':'4,3';
+    const dx=tn.x-fn.x,dy=tn.y-fn.y,len=Math.sqrt(dx*dx+dy*dy);
+    const ux=dx/len,uy=dy/len;
+    const r=22;
+    const x0=fn.x+ux*r,y0=fn.y+uy*r,x1=tn.x-ux*r,y1=tn.y-uy*r;
+    line(svg,x0,y0,x1,y1,stroke,sw,dash);
+    // arrowhead
+    const ax=x1,ay=y1;
+    svg.appendChild(mk('polygon',{
+      points:`${ax+ux*5},${ay+uy*5} ${ax-ux*3+uy*4},${ay-uy*3-ux*4} ${ax-ux*3-uy*4},${ay-uy*3+ux*4}`,
+      fill:stroke,opacity:en?'1':'0.35'
+    }));
+    // weight label
+    const mx=(x0+x1)/2,my=(y0+y1)/2;
+    const ws=c.w>=0?`+${c.w.toFixed(1)}`:c.w.toFixed(1);
+    txt(svg,mx+uy*12,my-ux*12,ws,en?(isNew?'#ffd700':'#2a5a2a'):'#183018','middle','8px');
+  }
+
+  // draw nodes
+  for(const [id,n] of vn){
+    const born=NODE_BORN[id]||0;
+    const isNew=(born===gen&&born>0);
+    const colors={in:'#00c8f0',hid:isNew?'#ffd700':'#39ff14',out:'#ff7b54'};
+    const c=colors[n.type];
+    const bg=`rgba(${hexToRgb(c)},${isNew?0.22:0.12})`;
+    svg.appendChild(mk('circle',{cx:n.x,cy:n.y,r:22,fill:bg,stroke:c,'stroke-width':isNew?2:1.5}));
+    if(isNew) svg.appendChild(mk('circle',{cx:n.x,cy:n.y,r:28,fill:'none',stroke:c,'stroke-width':'0.5',opacity:'0.35'}));
+    txt(svg,n.x,n.y,n.lbl,c,'middle','9px',700);
+  }
+
+  // new item label
+  const newConnsThisGen=vc.filter(c=>c.newAt===gen);
+  const newNodesThisGen=vn.filter(([id])=>NODE_BORN[id]===gen&&gen>0);
+  let newLbl='—';
+  if(gen===0) newLbl='Minimal ağ';
+  else if(newNodesThisGen.length>0) newLbl=`Düğüm eklendi: ${newNodesThisGen.map(([id,n])=>n.lbl).join(', ')}`;
+  else if(newConnsThisGen.length>0) newLbl=`Bağlantı eklendi: ${newConnsThisGen.map(c=>`${NODES[c.f].lbl}→${NODES[c.t].lbl}`).join(', ')}`;
+  else newLbl='Ağırlık optimizasyonu';
+  document.getElementById('newItemLbl').textContent=newLbl;
+  document.getElementById('netGenLbl').textContent=gen;
+
+  // layer labels
+  txt(svg,80,18,'Girdi','#487848','middle','9px');
+  txt(svg,240,18,'Gizli','#487848','middle','9px');
+  txt(svg,420,18,'Çıktı','#487848','middle','9px');
+}
+
+// ── Fitness chart ────────────────────────────────────────────────────────────
+function drawFit(gen){
+  const svg=document.getElementById('fitSvg');
+  svg.innerHTML='';
+  const W=700,H=200,PAD={l:40,r:20,t:20,b:30};
+  const iW=W-PAD.l-PAD.r, iH=H-PAD.t-PAD.b;
+
+  // axes
+  line(svg,PAD.l,PAD.t,PAD.l,H-PAD.b,'#183018',1);
+  line(svg,PAD.l,H-PAD.b,W-PAD.r,H-PAD.b,'#183018',1);
+
+  // y labels
+  for(let i=0;i<=4;i++){
+    const v=i/4, y=H-PAD.b-v*iH;
+    line(svg,PAD.l-3,y,PAD.l,y,'#183018',1);
+    txt(svg,PAD.l-6,y,fmt(v,2),'#487848','end','9px');
+  }
+
+  // x labels
+  for(let g=0;g<=20;g+=5){
+    const x=PAD.l+g/20*iW;
+    txt(svg,x,H-PAD.b+12,g,'#487848','middle','9px');
+  }
+
+  // fitness function with jumps at topo changes
+  function fitAt(g){
+    // base exponential growth
+    let base=1-Math.exp(-g/6.5);
+    // small jumps at topoloji changes (4,7,10,13,16)
+    const jumps=[4,7,10,13,16];
+    for(const j of jumps){
+      if(g>=j){
+        const recovery=1-Math.exp(-(g-j)/3);
+        base+=0.03*recovery;
+      }
+    }
+    return Math.min(0.97,base);
+  }
+
+  // draw curve
+  let d='';
+  for(let g=0;g<=20;g+=0.5){
+    const x=PAD.l+g/20*iW, y=H-PAD.b-fitAt(g)*iH;
+    d+=(g===0?'M':'L')+`${x},${y} `;
+  }
+  const path=mk('path',{d,stroke:'#39ff14','stroke-width':'1.5',fill:'none'});
+  svg.appendChild(path);
+
+  // fill under curve
+  const fillD=d+`L${W-PAD.r},${H-PAD.b} L${PAD.l},${H-PAD.b} Z`;
+  svg.appendChild(mk('path',{d:fillD,fill:'rgba(57,255,20,0.04)',stroke:'none'}));
+
+  // topoloji change markers
+  const topoGens=[4,7,10,13,16];
+  const topoLabels=['H1 eklendi','I1→H1','H2 eklendi','H1→H2','I2→H2'];
+  for(let i=0;i<topoGens.length;i++){
+    const g=topoGens[i];
+    if(g>gen) break;
+    const x=PAD.l+g/20*iW, fy=H-PAD.b-fitAt(g)*iH;
+    line(svg,x,H-PAD.b,x,fy,'rgba(255,215,0,0.3)',1,'2,2');
+    svg.appendChild(mk('circle',{cx:x,cy:fy,r:'3',fill:'#ffd700'}));
+  }
+
+  // current gen line
+  if(gen>=0){
+    const x=PAD.l+gen/20*iW;
+    line(svg,x,PAD.t,x,H-PAD.b,'#39ff14',1,'');
+    svg.appendChild(mk('circle',{cx:x,cy:H-PAD.b-fitAt(gen)*iH,r:'4',fill:'#39ff14'}));
+    txt(svg,x+4,PAD.t+8,fmt(fitAt(gen),2),'#39ff14','start','9px',700);
+  }
+
+  // axis labels
+  txt(svg,PAD.l+iW/2,H-4,'Nesil','#487848','middle','9px');
+  txt(svg,10,PAD.t+iH/2,'Fit','#487848','middle','9px');
+}
+
+// ── Update ────────────────────────────────────────────────────────────────────
+const gSlider=document.getElementById('genSlider');
+
+function update(){
+  const gen=+gSlider.value;
+  document.getElementById('genVal').textContent=gen;
+
+  const vc=visConns(gen), vn=visNodes(gen);
+  const connCount=vc.length;
+  const nodeCount=vn.length;
+  const fit=Math.min(0.97,1-Math.exp(-gen/6.5));
+
+  document.getElementById('stGen').textContent=gen;
+  document.getElementById('stNode').textContent=nodeCount;
+  document.getElementById('stConn').textContent=connCount;
+  document.getElementById('stFit').textContent=fmt(fit,2);
+
+  drawCycle(gen);
+  drawNet(gen);
+  drawFit(gen);
+}
+
+const PRESETS={start:{g:0},mid:{g:10},adv:{g:20}};
+function setP(name){
+  document.querySelectorAll('.pb').forEach(b=>b.classList.remove('on'));
+  event.target.classList.add('on');
+  gSlider.value=PRESETS[name].g;
+  update();
+}
+
+update();
+</script>
+</body>
+</html>

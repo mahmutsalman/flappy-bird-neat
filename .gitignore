@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+*.pyo
+localResources/
+CLAUDE.local.md
+.DS_Store

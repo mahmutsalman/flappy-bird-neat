@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEAT — 4 Adım</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#040904; --panel:#070d07; --surf:#0a130a; --brd:#183018;
+  --text:#b8f0b8; --muted:#487848; --acc:#39ff14;
+  --s1:#39ff14; --s2:#ffd700; --s3:#00c8f0; --s4:#ff7b54;
+  --fd:'Syne',sans-serif; --fb:'Space Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:var(--fb);-webkit-font-smoothing:antialiased;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.032;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat:repeat;mix-blend-mode:multiply;}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9998;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.11) 2px,rgba(0,0,0,.11) 4px);}
+
+/* NAV */
+.nav{position:sticky;top:0;z-index:200;background:var(--panel);border-bottom:1px solid var(--brd);
+  display:flex;justify-content:center;gap:0;backdrop-filter:blur(14px);}
+.nav a{font-family:var(--fb);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);padding:13px 22px;text-decoration:none;border-right:1px solid var(--brd);
+  transition:color .15s,background .15s;white-space:nowrap;}
+.nav a:last-child{border-right:none;}
+.nav a:hover{color:var(--text);}
+.nav a.s1:hover,.nav a.s1.active{color:var(--s1);background:rgba(57,255,20,.06);}
+.nav a.s2:hover,.nav a.s2.active{color:var(--s2);background:rgba(255,215,0,.06);}
+.nav a.s3:hover,.nav a.s3.active{color:var(--s3);background:rgba(0,200,240,.06);}
+.nav a.s4:hover,.nav a.s4.active{color:var(--s4);background:rgba(255,123,84,.06);}
+
+/* HERO */
+.hero{text-align:center;padding:60px 24px 48px;border-bottom:1px solid var(--brd);}
+.hero-lbl{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;}
+.hero-h{font-family:var(--fd);font-size:clamp(40px,6vw,72px);letter-spacing:-.02em;line-height:1;margin-bottom:14px;}
+.hero-sub{font-size:12px;line-height:1.8;color:var(--muted);max-width:480px;margin:0 auto;}
+
+/* STEP SECTION */
+.step{padding:56px 24px 64px;border-bottom:2px solid var(--brd);max-width:960px;margin:0 auto;}
+.step-badge{display:inline-flex;align-items:center;gap:10px;margin-bottom:18px;}
+.step-num{font-family:var(--fd);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);}
+.step-dot{width:8px;height:8px;border-radius:50%;}
+.step-h{font-family:var(--fd);font-size:clamp(28px,4vw,46px);line-height:1.05;letter-spacing:-.01em;margin-bottom:6px;}
+.step-sub{font-size:11px;font-style:italic;color:var(--muted);margin-bottom:24px;}
+
+/* Two-col layout */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:36px;align-items:start;margin-top:28px;}
+.prose{font-size:12px;line-height:1.9;color:var(--text);}
+.prose p+p{margin-top:14px;}
+.prose em{font-style:italic;}
+.fig{display:flex;flex-direction:column;gap:8px;}
+.fig-cap{font-size:10px;font-style:italic;color:var(--muted);}
+.ftag{font-size:10px;color:var(--acc);font-style:normal;margin-right:4px;}
+svg{overflow:visible;width:100%;}
+
+/* Key points */
+.keys{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:24px;}
+.key{border:1px solid var(--brd);background:var(--surf);padding:14px 16px;border-radius:2px;}
+.key-lbl{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+.key-val{font-family:var(--fd);font-size:22px;font-weight:700;line-height:1;}
+.key-desc{font-size:10px;color:var(--muted);margin-top:4px;}
+
+/* Full-width SVG */
+.full-fig{margin-top:28px;display:flex;flex-direction:column;gap:8px;}
+.fig-head{display:flex;justify-content:space-between;align-items:baseline;}
+.fig-tit{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);}
+
+/* Alert */
+.alert{border-left:3px solid var(--acc);padding:12px 16px;background:rgba(57,255,20,.04);margin-top:22px;border-radius:0 2px 2px 0;}
+.alert-lbl{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--acc);margin-bottom:5px;}
+.alert-body{font-size:12px;line-height:1.75;}
+
+/* Coda */
+.coda{text-align:center;padding:56px 24px 80px;}
+.cq{font-family:var(--fd);font-size:clamp(14px,1.8vw,18px);font-style:italic;line-height:1.55;color:var(--text);max-width:480px;margin:0 auto 12px;}
+.ca{font-size:11px;letter-spacing:.1em;color:var(--muted);}
+
+@media(max-width:800px){
+  .two{grid-template-columns:1fr;}
+  .keys{grid-template-columns:1fr 1fr;}
+  .nav a{padding:11px 14px;font-size:9px;}
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="#s1" class="s1">① Değerlendir</a>
+  <a href="#s2" class="s2">② Türe Ayır</a>
+  <a href="#s3" class="s3">③ Üret</a>
+  <a href="#s4" class="s4">④ Mutasyon</a>
+</nav>
+
+<div class="hero">
+  <p class="hero-lbl">NEAT Algoritması — Döngü Detayı</p>
+  <h1 class="hero-h" style="color:var(--text);">4 <span style="color:var(--acc);font-style:italic;">Adım</span></h1>
+  <p class="hero-sub">Her nesilde tekrar eden dörtlü döngünün adım adım açıklaması. Her adım kendi görseli ve mekanizmasıyla.</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     STEP 1: DEĞERLENDİR
+══════════════════════════════════════════════════════════════════ -->
+<section class="step" id="s1">
+  <div class="step-badge">
+    <span class="step-num">Adım 1 / 4</span>
+    <span class="step-dot" style="background:var(--s1);"></span>
+  </div>
+  <h2 class="step-h" style="color:var(--s1);">Değerlendir</h2>
+  <p class="step-sub">Her bireyi ortamda çalıştır — fitness skoru ata</p>
+
+  <div class="two">
+    <div class="prose">
+      <p>Popülasyon başlatıldıktan sonra her birey (genome) bir sinir ağına dönüştürülür ve ortamda çalıştırılır. Ortam bir oyun, bir simülasyon veya herhangi bir ölçülebilir görev olabilir.</p>
+      <p>Her bireye bir <em>fitness skoru</em> verilir. Bu skor bireyin görevi ne kadar iyi yaptığını sayısal olarak ifade eder. Yüksek fitness = iyi performans.</p>
+      <p>Değerlendirme bittikten sonra popülasyon içindeki her bireyin bir skoru vardır. Sonraki adımlar bu skora göre devam eder.</p>
+    </div>
+    <div class="fig">
+      <svg id="evalSvg" height="240" viewBox="0 0 420 240"
+           style="border:1px solid var(--brd);border-radius:2px;background:#020802;"></svg>
+      <p class="fig-cap"><span class="ftag">Şek. 1.1</span> 6 birey ortamda çalışır, her biri farklı bir fitness skoru alır.</p>
+    </div>
+  </div>
+
+  <div class="full-fig">
+    <div class="fig-head"><h4 class="fig-tit">Popülasyon Fitness Dağılımı</h4></div>
+    <svg id="fitBarSvg" height="160" viewBox="0 0 860 160"
+         style="border:1px solid var(--brd);border-radius:2px;background:#020802;"></svg>
+    <p class="fig-cap"><span class="ftag">Şek. 1.2</span> Her çubuk bir bireyin fitness skorunu gösterir. En yüksek skorlu bireyler sonraki adımda hayatta kalır.</p>
+  </div>
+
+  <div class="keys">
+    <div class="key"><p class="key-lbl">Birey sayısı</p><p class="key-val" style="color:var(--s1);">150</p><p class="key-desc">Tipik popülasyon boyutu</p></div>
+    <div class="key"><p class="key-lbl">Fitness ölçüsü</p><p class="key-val" style="color:var(--s1);">0–∞</p><p class="key-desc">Göreve özel skala</p></div>
+    <div class="key"><p class="key-lbl">Paralel değerlendirme</p><p class="key-val" style="color:var(--s1);">✓</p><p class="key-desc">Tüm bireyler aynı anda</p></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     STEP 2: TÜRE AYIR
+══════════════════════════════════════════════════════════════════ -->
+<section class="step" id="s2">
+  <div class="step-badge">
+    <span class="step-num">Adım 2 / 4</span>
+    <span class="step-dot" style="background:var(--s2);"></span>
+  </div>
+  <h2 class="step-h" style="color:var(--s2);">Türe Ayır</h2>
+  <p class="step-sub">Benzer genomları grupla — yenilikleri koru</p>
+
+  <div class="two">
+    <div class="prose">
+      <p>Fitness değerlendirmesinden sonra bireyler <em>genomik uzaklık</em> formülüne göre birbirleriyle karşılaştırılır. Benzer topolojiye sahip bireyler aynı "türe" atanır.</p>
+      <p>Formül: <strong style="color:var(--s2);">δ = (c1·E + c2·D) / N + c3·W̄</strong><br>
+      δ bir eşiği (≈3.0) aşarsa → farklı tür. Aşmazsa → aynı tür.</p>
+      <p>Her tür kendi içinde rekabet eder. Bu, yeni topolojilerin ilk başta düşük fitness gösterip elenmesini önler. Yenilik zaman kazanır.</p>
+    </div>
+    <div class="fig">
+      <svg id="specSvg" height="240" viewBox="0 0 420 240"
+           style="border:1px solid var(--brd);border-radius:2px;background:#020802;"></svg>
+      <p class="fig-cap"><span class="ftag">Şek. 2.1</span> Genomlar δ mesafesine göre 3 farklı türe gruplanır.</p>
+    </div>
+  </div>
+
+  <div class="full-fig">
+    <div class="fig-head"><h4 class="fig-tit">δ Formülü — Genomik Mesafe Hesabı</h4></div>
+    <svg id="deltaForSvg" height="130" viewBox="0 0 860 130"
+         style="border:1px solid var(--brd);border-radius:2px;background:#020802;"></svg>
+    <p class="fig-cap"><span class="ftag">Şek. 2.2</span> E=Fazla genler, D=Ayrık genler, W̄=Ortalama ağırlık farkı. δ eşiği (genellikle 3.0) tür sınırını belirler.</p>
+  </div>
+
+  <div class="keys">
+    <div class="key"><p class="key-lbl">δ Eşiği</p><p class="key-val" style="color:var(--s2);">3.0</p><p class="key-desc">Tür ayrım sınırı</p></div>
+    <div class="key"><p class="key-lbl">Neden gerekli?</p><p class="key-val" style="color:var(--s2);">Koruma</p><p class="key-desc">Yeni topolojileri ilk nesilde ölmekten korur</p></div>
+    <div class="key"><p class="key-lbl">Tür başına üreme</p><p class="key-val" style="color:var(--s2);">Bağımsız</p><p class="key-desc">Her tür kendi içinde seçilir</p></div>
+  </div>
+
+  <div class="alert">
+    <p class="alert-lbl">Neden türe ayırma çözüm?</p>
+    <p class="alert-body">Yeni bir düğüm eklenen ağın ağırlıkları henüz optimize edilmemiştir. Global rekabette bu birey elenir. Tür ayrımı onu kendi "nişinde" yaşatır — optimize olması için zaman tanır.</p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     STEP 3: ÜRET (CROSSOVER)
+══════════════════════════════════════════════════════════════════ -->
+<section class="step" id="s3">
+  <div class="step-badge">
+    <span class="step-num">Adım 3 / 4</span>
+    <span class="step-dot" style="background:var(--s3);"></span>
+  </div>
+  <h2 class="step-h" style="color:var(--s3);">Üret</h2>
+  <p class="step-sub">İki ebeveynden yeni birey — crossover ile gen aktarımı</p>
+
+  <div class="two">
+    <div class="prose">
+      <p>Her türün en iyi bireyleri ebeveyn olarak seçilir. İki ebeveynin genleri <em>innovation numarasına</em> göre hizalanır.</p>
+      <p>Hizalamadan sonra üç gen kategorisi ortaya çıkar:<br>
+      <span style="color:var(--s1);">● Eşleşen:</span> Her iki ebeveynde var → rastgele birinden alınır<br>
+      <span style="color:var(--s2);">● Ayrık:</span> Yalnızca birinde var, eşik içinde → daha fit ebeveynden<br>
+      <span style="color:var(--s4);">● Fazla:</span> Diğerinin max'ını aşar → daha fit ebeveynden</p>
+      <p>Sonuç: iki ebeveynin mirasını taşıyan yeni bir çocuk genomu. Hem genleri hem topolojiyi miras alır.</p>
+    </div>
+    <div class="fig">
+      <svg id="crossSmSvg" height="240" viewBox="0 0 420 240"
+           style="border:1px solid var(--brd);border-radius:2px;background:#020802;"></svg>
+      <p class="fig-cap"><span class="ftag">Şek. 3.1</span> İki ebeveyn genomundan çocuk genomu oluşturma süreci.</p>
+    </div>
+  </div>
+
+  <div class="full-fig">
+    <div class="fig-head"><h4 class="fig-tit">Gen Hizalama ve Seçim — Innovation #1..9</h4></div>
+    <svg id="crossFullSvg" height="220" viewBox="0 0 860 220"
+         style="border:1px solid var(--brd);border-radius:2px;background:#020802;"></svg>
+    <p class="fig-cap"><span class="ftag">Şek. 3.2</span> Yeşil=Eşleşen (rastgele), Sarı=Ayrık (dominant ebeveyn), Kırmızı=Fazla (dominant ebeveyn). Noktalı=devre dışı ama silinmemiş.</p>
+  </div>
+
+  <div class="keys">
+    <div class="key"><p class="key-lbl">Eşleşen genler</p><p class="key-val" style="color:var(--s1);">Rastgele</p><p class="key-desc">%50/%50 olasılıkla</p></div>
+    <div class="key"><p class="key-lbl">Ayrık + Fazla</p><p class="key-val" style="color:var(--s2);">Dominant</p><p class="key-desc">Daha fit ebeveynden</p></div>
+    <div class="key"><p class="key-lbl">Innovation #</p><p class="key-val" style="color:var(--s3);">Rehber</p><p class="key-desc">Hangi genin hangiyle eşleşeceğini belirler</p></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     STEP 4: MUTASYON
+══════════════════════════════════════════════════════════════════ -->
+<section class="step" id="s4">
+  <div class="step-badge">
+    <span class="step-num">Adım 4 / 4</span>
+    <span class="step-dot" style="background:var(--s4);"></span>
+  </div>
+  <h2 class="step-h" style="color:var(--s4);">Mutasyon</h2>
+  <p class="step-sub">Topolojiyi büyüt, ağırlıkları ayarla — yenilik buradan gelir</p>
+
+  <div class="two">
+    <div class="prose">
+      <p>Crossover ile üretilen çocuk, mutasyona tabi tutulur. İki tür yapısal mutasyon vardır:</p>
+      <p><strong style="color:var(--s4);">Bağlantı Ekle:</strong> İki düğüm arasına yeni, rastgele ağırlıklı bir bağlantı eklenir. Innovation Tracker'dan yeni bir numara alır.</p>
+      <p><strong style="color:var(--s4);">Düğüm Ekle:</strong> Mevcut bir bağlantı ikiye bölünür. Ortaya yeni gizli düğüm eklenir. Orijinal bağlantı devre dışı kalır.</p>
+      <p>Ayrıca %80 ihtimalle mevcut ağırlıklar <em>pertürbe</em> edilir (küçük gürültü eklenir), %10 ihtimalle tamamen sıfırlanır.</p>
+    </div>
+    <div class="fig">
+      <svg id="mutSmSvg" height="240" viewBox="0 0 420 240"
+           style="border:1px solid var(--brd);border-radius:2px;background:#020802;"></svg>
+      <p class="fig-cap"><span class="ftag">Şek. 4.1</span> İki mutasyon türü: bağlantı ekleme ve düğüm ekleme.</p>
+    </div>
+  </div>
+
+  <div class="full-fig">
+    <div class="fig-head"><h4 class="fig-tit">Mutasyon Türleri — Önce / Sonra Karşılaştırması</h4></div>
+    <svg id="mutFullSvg" height="220" viewBox="0 0 860 220"
+         style="border:1px solid var(--brd);border-radius:2px;background:#020802;"></svg>
+    <p class="fig-cap"><span class="ftag">Şek. 4.2</span> Sol: Bağlantı ekle mutasyonu. Sağ: Düğüm ekle mutasyonu. Her yeni gen küresel innovation numarası alır.</p>
+  </div>
+
+  <div class="keys">
+    <div class="key"><p class="key-lbl">Ağırlık pertürbasyon</p><p class="key-val" style="color:var(--s4);">%80</p><p class="key-desc">Küçük rastgele değişim</p></div>
+    <div class="key"><p class="key-lbl">Yapısal mutasyon</p><p class="key-val" style="color:var(--s4);">~%3</p><p class="key-desc">Bağlantı veya düğüm ekleme</p></div>
+    <div class="key"><p class="key-lbl">Innovation Tracker</p><p class="key-val" style="color:var(--s4);">Küresel</p><p class="key-desc">Tüm nesillerde benzersiz ID</p></div>
+  </div>
+
+  <div class="alert">
+    <p class="alert-lbl">Innovation Tracker neden kritik?</p>
+    <p class="alert-body">Her yeni gen (bağlantı veya düğüm) küresel bir innovation numarası alır. Bu numara, farklı bireylerdeki aynı evrimsel olayı tanımlar. Crossover sırasında hangi genin hangiyle eşleşeceği bu numaraya bakılarak bulunur.</p>
+  </div>
+</section>
+
+<footer class="coda">
+  <blockquote class="cq">"Evolution does not know where it is going — it only knows what worked."</blockquote>
+  <p class="ca">— Kenneth O. Stanley &amp; Risto Miikkulainen, 2002</p>
+</footer>
+
+<script>
+const NS='http://www.w3.org/2000/svg';
+function mk(tag,a){const e=document.createElementNS(NS,tag);for(const[k,v]of Object.entries(a))e.setAttribute(k,v);return e;}
+function txt(p,x,y,s,fill,anchor='middle',size='11px',weight=400){
+  const t=mk('text',{x,y,fill,'text-anchor':anchor,'dominant-baseline':'middle',
+    'font-family':'Space Mono,monospace','font-size':size,'font-weight':weight});
+  t.textContent=s;p.appendChild(t);return t;
+}
+function ln(p,x1,y1,x2,y2,stroke,sw=1,dash=''){
+  const l=mk('line',{x1,y1,x2,y2,stroke,'stroke-width':sw});
+  if(dash)l.setAttribute('stroke-dasharray',dash);p.appendChild(l);
+}
+function circ(p,cx,cy,r,fill,stroke,sw=1){p.appendChild(mk('circle',{cx,cy,r,fill,stroke,'stroke-width':sw}));}
+function rect(p,x,y,w,h,fill,stroke,sw=1,rx=2){p.appendChild(mk('rect',{x,y,width:w,height:h,fill,stroke,'stroke-width':sw,rx}));}
+
+// ── STEP 1: Eval diagram ─────────────────────────────────────────────────────
+function drawEval(){
+  const svg=document.getElementById('evalSvg');
+  svg.innerHTML='';
+  const fits=[0.82,0.45,0.91,0.38,0.67,0.73];
+  const colors=['#39ff14','#487848','#39ff14','#2a4a2a','#39ff14','#39ff14'];
+  const labels=['G01','G02','G03','G04','G05','G06'];
+  // draw 6 mini networks + fitness bars
+  for(let i=0;i<6;i++){
+    const col=i%3, row=Math.floor(i/3);
+    const ox=20+col*135, oy=18+row*115;
+    const f=fits[i], isGood=f>0.6;
+    const c=isGood?'#39ff14':'#487848';
+    // mini network
+    const nx=[ox+20,ox+60,ox+100], ny=[oy+20,oy+50,oy+80];
+    // input→hidden→output connections
+    [[0,1],[1,2],[0,2]].forEach(([a,b])=>{
+      ln(svg,nx[a],ny[a],nx[b],ny[b],isGood?'rgba(57,255,20,0.4)':'rgba(72,120,72,0.3)',1);
+    });
+    nx.forEach((x,j)=>{
+      circ(svg,x,ny[j],7,isGood?'rgba(57,255,20,0.15)':'rgba(72,120,72,0.1)',c,1);
+    });
+    // label
+    txt(svg,ox+60,oy+95,labels[i],c,'middle','9px',700);
+    // fitness bar
+    const bx=ox+20,by=oy+104,bw=80,bh=7;
+    rect(svg,bx,by,bw,bh,'#0a130a','#183018',1,1);
+    rect(svg,bx,by,bw*f,bh,c,'none',0,1);
+    txt(svg,bx+bw+4,by+3.5,(f*100).toFixed(0)+'%',c,'start','8px');
+  }
+}
+
+function drawFitBar(){
+  const svg=document.getElementById('fitBarSvg');
+  svg.innerHTML='';
+  const W=860,H=160,PAD={l:36,r:12,t:16,b:28};
+  const fits=[.38,.45,.58,.67,.73,.77,.82,.83,.85,.87,.88,.91,.63,.72,.55,.44,.68,.80,.91,.47];
+  const n=fits.length;
+  const iW=W-PAD.l-PAD.r, iH=H-PAD.t-PAD.b;
+  const bw=Math.floor(iW/n)-2;
+  // axes
+  ln(svg,PAD.l,H-PAD.b,W-PAD.r,H-PAD.b,'#183018',1);
+  [0,.25,.5,.75,1].forEach(v=>{
+    const y=H-PAD.b-v*iH;
+    ln(svg,PAD.l-3,y,PAD.l,y,'#183018',1);
+    txt(svg,PAD.l-5,y,(v*100)+'%','#487848','end','8px');
+    ln(svg,PAD.l,y,W-PAD.r,y,'rgba(24,48,24,0.5)',0.5,'');
+  });
+  fits.forEach((f,i)=>{
+    const x=PAD.l+i*(bw+2)+1;
+    const bh=f*iH, by=H-PAD.b-bh;
+    const good=f>0.65;
+    const c=good?'#39ff14':'#2a5a2a';
+    rect(svg,x,by,bw,bh,good?'rgba(57,255,20,0.15)':'rgba(42,90,42,0.1)',c,good?1:0.6,1);
+    if(f===Math.max(...fits)) txt(svg,x+bw/2,by-8,'★','#ffd700','middle','10px',700);
+  });
+  txt(svg,PAD.l+iW/2,H-4,'Birey','#487848','middle','9px');
+  txt(svg,10,PAD.t+iH/2,'Fitness','#487848','middle','8px');
+}
+
+// ── STEP 2: Speciation ───────────────────────────────────────────────────────
+function drawSpec(){
+  const svg=document.getElementById('specSvg');
+  svg.innerHTML='';
+  // 3 species clusters with dots
+  const species=[
+    {cx:110,cy:110,r:60,color:'#39ff14',lbl:'Tür A',n:7},
+    {cx:290,cy:85,r:50,color:'#ffd700',lbl:'Tür B',n:5},
+    {cx:290,cy:185,r:45,color:'#00c8f0',lbl:'Tür C',n:4},
+  ];
+  // δ threshold arc hint
+  species.forEach(sp=>{
+    // cluster circle
+    svg.appendChild(mk('circle',{cx:sp.cx,cy:sp.cy,r:sp.r,
+      fill:`rgba(${hexRGB(sp.color)},0.06)`,stroke:sp.color,'stroke-width':'1','stroke-dasharray':'4,3'}));
+    // dots inside
+    for(let i=0;i<sp.n;i++){
+      const angle=i*(2*Math.PI/sp.n);
+      const rr=sp.r*0.5+Math.random()*sp.r*0.35;
+      const dx=rr*Math.cos(angle), dy=rr*Math.sin(angle);
+      circ(svg,sp.cx+dx,sp.cy+dy,4,`rgba(${hexRGB(sp.color)},0.4)`,sp.color,1);
+    }
+    txt(svg,sp.cx,sp.cy,sp.lbl,sp.color,'middle','10px',700);
+    txt(svg,sp.cx,sp.cy+14,'δ<3.0',sp.color+'88','middle','8px');
+  });
+  // δ arrow between species
+  ln(svg,species[0].cx+60,species[0].cy-20,species[1].cx-50,species[1].cy+10,'#487848',0.8,'3,3');
+  txt(svg,200,72,'δ>3.0','#487848','middle','9px');
+  txt(svg,200,84,'→ farklı tür','#487848','middle','8px');
+}
+
+function drawDeltaFor(){
+  const svg=document.getElementById('deltaForSvg');
+  svg.innerHTML='';
+  const W=860,H=130;
+  // formula visualization
+  // Box 1: E (excess)
+  const boxes=[
+    {x:80,label:'E = 1',sub:'Fazla gen',color:'#ff7b54',val:'1'},
+    {x:230,label:'D = 3',sub:'Ayrık gen',color:'#ffd700',val:'3'},
+    {x:380,label:'N = 8',sub:'Büyük genomun\ngen sayısı',color:'#487848',val:'8'},
+    {x:530,label:'W̄ = 0.84',sub:'Ort. ağırlık\nfarkı',color:'#00c8f0',val:'0.84'},
+    {x:700,label:'δ = 0.84',sub:'Genomik\nuzaklık',color:'#39ff14',val:'0.84'},
+  ];
+  boxes.forEach((b,i)=>{
+    const bx=b.x-50, by=18, bw=100, bh=76;
+    rect(svg,bx,by,bw,bh,`rgba(${hexRGB(b.color)},0.07)`,b.color,i===4?2:1);
+    txt(svg,b.x,by+18,b.label,b.color,'middle','10px',700);
+    b.sub.split('\n').forEach((s,j)=>txt(svg,b.x,by+36+j*14,s,'#487848','middle','8px'));
+    if(i<4){
+      txt(svg,b.x+68,65,i===1?'+':i===2?'/':i===3?'+  c3·':'','#487848','middle','11px',700);
+    }
+  });
+  // formula text
+  txt(svg,430,114,'δ = (c1·E + c2·D) / N + c3·W̄      →  eşik genellikle 3.0','#487848','middle','9px');
+}
+
+// ── STEP 3: Crossover ────────────────────────────────────────────────────────
+function drawCrossSmall(){
+  const svg=document.getElementById('crossSmSvg');
+  svg.innerHTML='';
+  // Show parent genomes as strips and child below
+  const P1=[1,2,3,4,5,8], P2=[1,2,3,4,5,6,7,9];
+  const ALL=[1,2,3,4,5,6,7,8,9];
+  function catOf(i){
+    const a=P1.includes(i),b=P2.includes(i);
+    if(a&&b)return 'M'; if(!a&&!b)return '-';
+    if(a&&i<=9)return 'D'; if(b&&i<=8)return 'D'; return 'E';
+  }
+  const catC={M:'#39ff14',D:'#ffd700',E:'#ff7b54'};
+  const bw=34,bh=28,startX=20,rowGap=54;
+  txt(svg,8,30,'P1','#00c8f0','start','9px',700);
+  txt(svg,8,84,'P2','#ffd700','start','9px',700);
+  txt(svg,8,150,'★','#39ff14','start','11px',700);
+  txt(svg,8,164,'Çocuk','#39ff14','start','8px');
+  ALL.forEach((innov,idx)=>{
+    const x=startX+idx*(bw+3);
+    const cat=catOf(innov);
+    const c=catC[cat]||'#183018';
+    // P1 box
+    if(P1.includes(innov)){
+      rect(svg,x,16,bw,bh,'rgba(0,200,240,0.1)',c,1.2);
+      txt(svg,x+bw/2,16+bh/2,innov,'#00c8f0','middle','9px',700);
+    }
+    // P2 box
+    if(P2.includes(innov)){
+      rect(svg,x,70,bw,bh,'rgba(255,215,0,0.1)',c,1.2);
+      txt(svg,x+bw/2,70+bh/2,innov,'#ffd700','middle','9px',700);
+    }
+    // category label
+    if(cat!=='-') txt(svg,x+bw/2,108,cat,c,'middle','9px',700);
+    // child
+    const inChild = innov<=5 || innov===8;
+    if(inChild){
+      const src=innov<=5?(Math.random()>0.5?1:2):1;
+      const sc=src===1?'#00c8f0':'#ffd700';
+      rect(svg,x,130,bw,bh,`rgba(57,255,20,0.12)`,c,1.5);
+      txt(svg,x+bw/2,130+bh/2,innov,'#39ff14','middle','9px',700);
+      txt(svg,x+bw/2,168,'P'+src,sc,'middle','8px');
+    } else {
+      rect(svg,x,130,bw,bh,'transparent','#183018',0.5);
+      svg.querySelector('rect:last-of-type')?.setAttribute('stroke-dasharray','3,2');
+    }
+  });
+}
+
+function drawCrossFull(){
+  const svg=document.getElementById('crossFullSvg');
+  svg.innerHTML='';
+  const W=860,H=220;
+  const P1g={1:{w:.70,en:true},2:{w:-.30,en:true},3:{w:.50,en:true},4:{w:.20,en:false},5:{w:-.80,en:true},8:{w:.40,en:true}};
+  const P2g={1:{w:.10,en:true},2:{w:.60,en:true},3:{w:-.40,en:true},4:{w:.90,en:true},5:{w:.30,en:false},6:{w:-.50,en:true},7:{w:.20,en:true},9:{w:-.10,en:true}};
+  const ALL=[1,2,3,4,5,6,7,8,9];
+  function cat(i){const a=i in P1g,b=i in P2g;if(a&&b)return'M';if(a&&i<=9)return'D';if(b&&i<=8)return'D';if(b)return'E';return'-';}
+  const catC={M:'#39ff14',D:'#ffd700',E:'#ff7b54'};
+  const colW=(W-60)/9, bw=54, bh=34;
+  function xc(i){return 30+(i-1)*colW+colW/2;}
+  // headers
+  ALL.forEach(i=>txt(svg,xc(i),12,`#${i}`,'#2a4a2a','middle','9px'));
+  txt(svg,12,40,'P1','#00c8f0','middle','9px',700);
+  txt(svg,12,90,'P2','#ffd700','middle','9px',700);
+  txt(svg,12,158,'Çocuk','#39ff14','middle','8px',700);
+  // category row
+  ALL.forEach(i=>{const c=catC[cat(i)];if(c)txt(svg,xc(i),118,cat(i),c,'middle','9px',700);});
+  // P1 row
+  ALL.forEach(i=>{
+    const c=catC[cat(i)]||'#183018';
+    if(i in P1g){
+      const g=P1g[i];
+      rect(svg,xc(i)-bw/2,22,bw,bh,'rgba(0,200,240,0.1)',c,1.2);
+      txt(svg,xc(i),22+10,`#${i}`,'#00c8f0','middle','8px',700);
+      txt(svg,xc(i),22+24,(g.w>=0?'+':'')+g.w.toFixed(2),g.en?'#b8f0b8':'#2a4a2a','middle','8px');
+    } else {rect(svg,xc(i)-bw/2,22,bw,bh,'transparent','#183018',0.5);svg.lastChild?.setAttribute('stroke-dasharray','3,2');}
+  });
+  // P2 row
+  ALL.forEach(i=>{
+    const c=catC[cat(i)]||'#183018';
+    if(i in P2g){
+      const g=P2g[i];
+      rect(svg,xc(i)-bw/2,72,bw,bh,'rgba(255,215,0,0.1)',c,1.2);
+      txt(svg,xc(i),72+10,`#${i}`,'#ffd700','middle','8px',700);
+      txt(svg,xc(i),72+24,(g.w>=0?'+':'')+g.w.toFixed(2),g.en?'#b8f0b8':'#2a4a2a','middle','8px');
+    } else {rect(svg,xc(i)-bw/2,72,bw,bh,'transparent','#183018',0.5);svg.lastChild?.setAttribute('stroke-dasharray','3,2');}
+  });
+  // divider
+  ln(svg,24,132,W-12,132,'#183018',1,'4,2');
+  // child row
+  const childGens=[1,2,3,4,5,8];
+  const childSrc={1:1,2:2,3:1,4:1,5:1,8:1};
+  ALL.forEach(i=>{
+    const c=catC[cat(i)]||'#183018';
+    if(childGens.includes(i)){
+      const src=childSrc[i]||1;
+      const sc=src===1?'#00c8f0':'#ffd700';
+      rect(svg,xc(i)-bw/2,140,bw,bh,'rgba(57,255,20,0.1)',c,1.5);
+      txt(svg,xc(i),140+10,`#${i}`,'#39ff14','middle','8px',700);
+      txt(svg,xc(i),140+24,'P'+src,sc,'middle','7px',700);
+    } else {
+      rect(svg,xc(i)-bw/2,140,bw,bh,'transparent','#183018',0.4);
+      svg.lastChild?.setAttribute('stroke-dasharray','2,3');
+    }
+  });
+  // legend
+  [{c:'#39ff14',l:'M = Eşleşen'},{c:'#ffd700',l:'D = Ayrık'},{c:'#ff7b54',l:'E = Fazla'}].forEach(({c,l},i)=>{
+    circ(svg,680+i*58,208,4,'transparent',c,1.5);
+    txt(svg,688+i*58,208,l,c,'start','9px');
+  });
+}
+
+// ── STEP 4: Mutation ─────────────────────────────────────────────────────────
+function drawMutSmall(){
+  const svg=document.getElementById('mutSmSvg');
+  svg.innerHTML='';
+  // Left: Add Connection (before/after)
+  const nodes={I1:{x:50,y:60},I2:{x:50,y:160},H1:{x:150,y:110},O:{x:230,y:110}};
+  function drawNet(ox,nodes2,conns,newConn){
+    conns.forEach(([a,b,isNew])=>{
+      const na=nodes2[a],nb=nodes2[b];
+      const c=isNew?'#ffd700':a.startsWith('H')||b.startsWith('H')?'#39ff14':'#487848';
+      ln(svg,na.x+ox,na.y,nb.x+ox,nb.y,c,isNew?2:1,isNew?'':'');
+    });
+    Object.entries(nodes2).forEach(([id,n])=>{
+      const c=id==='O'?'#ff7b54':id.startsWith('H')?'#39ff14':'#00c8f0';
+      circ(svg,n.x+ox,n.y,12,`rgba(${hexRGB(c)},0.15)`,c,1.2);
+      txt(svg,n.x+ox,n.y,id,c,'middle','8px',700);
+    });
+  }
+  // Before (left)
+  txt(svg,125,10,'Bağlantı Ekle','#ffd700','middle','9px',700);
+  txt(svg,55,10,'ÖNCE','#487848','middle','8px');
+  drawNet(-6,nodes,[['I1','H1',false],['H1','O',false],['I2','H1',false]]);
+  txt(svg,205,10,'SONRA','#ffd700','middle','8px');
+  drawNet(155,nodes,[['I1','H1',false],['H1','O',false],['I2','H1',false],['I2','O',true]]);
+  txt(svg,125,220,'Yeni: I2→O (#6)','#ffd700','middle','9px');
+
+  // Divider
+  ln(svg,210,15,210,205,'#183018',1,'4,2');
+
+  // Right: Add Node
+  const rNodes={I1:{x:50,y:110},H1:{x:140,y:110},HN:{x:140,y:70},O:{x:230,y:110}};
+  txt(svg,330,10,'Düğüm Ekle','#ff7b54','middle','9px',700);
+  txt(svg,255,10,'ÖNCE','#487848','middle','8px');
+  const rBase={I1:{x:50,y:110},O:{x:230,y:110}};
+  ln(svg,rBase.I1.x+210,rBase.I1.y,rBase.O.x+210,rBase.O.y,'#487848',1,'3,2');
+  ['I1','O'].forEach(id=>{
+    const n=rBase[id],c=id==='O'?'#ff7b54':'#00c8f0';
+    circ(svg,n.x+210,n.y,12,`rgba(${hexRGB(c)},0.15)`,c,1.2);
+    txt(svg,n.x+210,n.y,id,c,'middle','8px',700);
+  });
+  txt(svg,405,10,'SONRA','#ff7b54','middle','8px');
+  const rAfter={I1:{x:50,y:120},HN:{x:140,y:80},O:{x:230,y:120}};
+  [[{x:50,y:120},{x:140,y:80},true,'I1→HN'],[{x:140,y:80},{x:230,y:120},true,'HN→O']].forEach(([a,b,isNew])=>{
+    ln(svg,a.x+350,a.y,b.x+350,b.y,'#ff7b54',2);
+  });
+  ln(svg,rAfter.I1.x+350,rAfter.I1.y,rAfter.O.x+350,rAfter.O.y,'#183018',1,'3,2');
+  Object.entries(rAfter).forEach(([id,n])=>{
+    const c=id==='O'?'#ff7b54':id==='HN'?'#ffd700':'#00c8f0';
+    circ(svg,n.x+350,n.y,12,`rgba(${hexRGB(c)},${id==='HN'?0.3:0.15})`,c,id==='HN'?2:1.2);
+    txt(svg,n.x+350,n.y,id==='HN'?'H*':id,c,'middle','8px',700);
+  });
+  txt(svg,330,220,'I1→H* ve H*→O (#7,#8)','#ff7b54','middle','9px');
+}
+
+function drawMutFull(){
+  const svg=document.getElementById('mutFullSvg');
+  svg.innerHTML='';
+  const W=860,H=220;
+  // Left half: Add Connection
+  const lw=W/2-10;
+  rect(svg,10,8,lw,H-16,'transparent','#183018',1);
+  txt(svg,10+lw/2,22,'Bağlantı Ekle Mutasyonu','#ffd700','middle','10px',700);
+
+  // Network nodes for left
+  const lNodes={IN1:{x:70,y:80},IN2:{x:70,y:140},HID:{x:160,y:110},OUT:{x:245,y:110}};
+  const lConns=[['IN1','HID'],['HID','OUT'],['IN2','HID']];
+  const newConn=['IN2','OUT'];
+  // draw existing
+  lConns.forEach(([a,b])=>{
+    const na=lNodes[a],nb=lNodes[b];
+    ln(svg,na.x,na.y,nb.x,nb.y,'#487848',1.2);
+  });
+  // draw new connection
+  ln(svg,lNodes[newConn[0]].x,lNodes[newConn[0]].y,lNodes[newConn[1]].x,lNodes[newConn[1]].y,'#ffd700',2);
+  // arrow
+  const [nfx,nfy,ntx,nty]=[lNodes.IN2.x,lNodes.IN2.y,lNodes.OUT.x,lNodes.OUT.y];
+  const dx=ntx-nfx,dy=nty-nfy,len=Math.sqrt(dx*dx+dy*dy);
+  const ux=dx/len,uy=dy/len;
+  svg.appendChild(mk('polygon',{points:`${ntx-14*ux},${nty-14*uy} ${ntx-14*ux-8*uy},${nty-14*uy+8*ux} ${ntx-14*ux+8*uy},${nty-14*uy-8*ux}`,fill:'#ffd700'}));
+  // nodes
+  Object.entries(lNodes).forEach(([id,n])=>{
+    const c=id==='OUT'?'#ff7b54':id.startsWith('H')?'#39ff14':'#00c8f0';
+    circ(svg,n.x,n.y,16,`rgba(${hexRGB(c)},0.15)`,c,1.5);
+    txt(svg,n.x,n.y,id.replace('IN','I').replace('HID','H').replace('OUT','O'),c,'middle','9px',700);
+  });
+  // labels
+  txt(svg,10+lw/2,175,'Yeni bağlantı: IN2 → OUT','#ffd700','middle','9px');
+  txt(svg,10+lw/2,192,'Rastgele ağırlık atanır. Innovation Tracker\'dan #6 alınır.','#487848','middle','8px');
+
+  // Right half: Add Node
+  const rx=W/2+10;
+  rect(svg,rx,8,lw,H-16,'transparent','#183018',1);
+  txt(svg,rx+lw/2,22,'Düğüm Ekle Mutasyonu','#ff7b54','middle','10px',700);
+
+  const rNodes={IN1:{x:rx+60,y:80},IN2:{x:rx+60,y:140},OLD:{x:rx+170,y:110},NEWH:{x:rx+170,y:60},OUT:{x:rx+270,y:110}};
+  // disabled original connection
+  ln(svg,rNodes.IN1.x,rNodes.IN1.y,rNodes.OUT.x,rNodes.OUT.y,'#183018',1,'4,3');
+  txt(svg,rNodes.IN1.x+(rNodes.OUT.x-rNodes.IN1.x)/2,96,'devre dışı','#2a4a2a','middle','8px');
+  // other existing conns
+  ln(svg,rNodes.IN2.x,rNodes.IN2.y,rNodes.OLD.x,rNodes.OLD.y,'#487848',1.2);
+  ln(svg,rNodes.OLD.x,rNodes.OLD.y,rNodes.OUT.x,rNodes.OUT.y,'#487848',1.2);
+  // new connections through new node
+  ln(svg,rNodes.IN1.x,rNodes.IN1.y,rNodes.NEWH.x,rNodes.NEWH.y,'#ff7b54',2);
+  ln(svg,rNodes.NEWH.x,rNodes.NEWH.y,rNodes.OUT.x,rNodes.OUT.y,'#ff7b54',2);
+  // nodes
+  Object.entries(rNodes).forEach(([id,n])=>{
+    if(id==='OLD')return;
+    const isNew=(id==='NEWH');
+    const c=id==='OUT'?'#ff7b54':id==='NEWH'?'#ffd700':'#00c8f0';
+    circ(svg,n.x,n.y,16,`rgba(${hexRGB(c)},${isNew?0.3:0.15})`,c,isNew?2:1.5);
+    if(isNew) svg.appendChild(mk('circle',{cx:n.x,cy:n.y,r:20,fill:'none',stroke:c,'stroke-width':'0.5',opacity:'0.4'}));
+    txt(svg,n.x,n.y,id==='IN1'?'I1':id==='IN2'?'I2':id==='NEWH'?'H*':'O',c,'middle','9px',700);
+  });
+  txt(svg,rx+lw/2,175,'Bağlantı I1→O bölündü. H* araya eklendi.','#ff7b54','middle','9px');
+  txt(svg,rx+lw/2,192,'I1→H* ağırlık=1.0  ·  H*→O ağırlık=eskiAğırlık  ·  #7 ve #8 ID alınır','#487848','middle','8px');
+}
+
+function hexRGB(hex){
+  const h=hex.replace('#','');
+  return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)].join(',');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+drawEval();
+drawFitBar();
+drawSpec();
+drawDeltaFor();
+drawCrossSmall();
+drawCrossFull();
+drawMutSmall();
+drawMutFull();
+
+// Nav active state
+const sections=['s1','s2','s3','s4'];
+const obs=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      document.querySelectorAll('.nav a').forEach(a=>a.classList.remove('active'));
+      const link=document.querySelector(`.nav a[href="#${e.target.id}"]`);
+      if(link)link.classList.add('active');
+    }
+  });
+},{threshold:0.3});
+sections.forEach(id=>{const el=document.getElementById(id);if(el)obs.observe(el);});
+</script>
+</body>
+</html>
